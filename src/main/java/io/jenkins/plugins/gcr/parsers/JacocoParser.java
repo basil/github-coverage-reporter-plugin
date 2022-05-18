@@ -7,6 +7,7 @@ import io.jenkins.plugins.gcr.utils.XmlUtils;
 
 import javax.swing.text.html.parser.Parser;
 import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.sax.SAXSource;
 
@@ -14,8 +15,18 @@ public class JacocoParser implements CoverageParser {
 
     @Override
     public Coverage parse(FilePath filepath) throws ParserException {
+        JAXBContext jaxbContext;
+        Thread t = Thread.currentThread();
+        ClassLoader orig = t.getContextClassLoader();
+        t.setContextClassLoader(JacocoParser.class.getClassLoader());
         try {
-            JAXBContext jaxbContext = JAXBContext.newInstance(JacocoCoverage.class);
+            jaxbContext = JAXBContext.newInstance(JacocoCoverage.class);
+        } catch (JAXBException e) {
+            throw new ParserException("Failed to initialize JAXB context", e);
+        } finally {
+            t.setContextClassLoader(orig);
+        }
+        try {
             SAXSource source = XmlUtils.getSAXSource(filepath);
 
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();

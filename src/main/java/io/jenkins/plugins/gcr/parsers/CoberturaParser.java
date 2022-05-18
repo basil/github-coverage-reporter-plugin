@@ -6,6 +6,7 @@ import io.jenkins.plugins.gcr.models.Coverage;
 import io.jenkins.plugins.gcr.utils.XmlUtils;
 
 import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
 import javax.xml.bind.Unmarshaller;
 import javax.xml.transform.sax.SAXSource;
 
@@ -18,8 +19,18 @@ public class CoberturaParser implements CoverageParser {
 
     @Override
     public Coverage parse(FilePath filepath) throws ParserException {
+        JAXBContext jaxbContext;
+        Thread t = Thread.currentThread();
+        ClassLoader orig = t.getContextClassLoader();
+        t.setContextClassLoader(CoberturaParser.class.getClassLoader());
         try {
-            JAXBContext jaxbContext = JAXBContext.newInstance(CoberturaCoverage.class);
+            jaxbContext = JAXBContext.newInstance(CoberturaCoverage.class);
+        } catch (JAXBException e) {
+            throw new ParserException("Failed to initialize JAXB context", e);
+        } finally {
+            t.setContextClassLoader(orig);
+        }
+        try {
             SAXSource source = XmlUtils.getSAXSource(filepath);
 
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
